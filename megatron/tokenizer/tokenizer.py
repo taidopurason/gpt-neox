@@ -47,6 +47,9 @@ def build_tokenizer(args):
     elif args.tokenizer_type.lower() == "HFTokenizer".lower():
         assert args.vocab_file is not None
         tokenizer = HFTokenizer(args.vocab_file)
+    elif args.tokenizer_type.lower() == "HuggingFaceTokenizer".lower():
+        assert args.vocab_file is not None
+        tokenizer = HuggingFaceTokenizer(args.vocab_file)
     elif args.tokenizer_type.lower() == "HFGPT2Tokenizer".lower():
         if args.vocab_file is None:
             print(
@@ -222,6 +225,51 @@ class SentencePieceTokenizer(AbstractTokenizer):
     @property
     def eod(self):
         return self.eod_id
+
+
+class HuggingFaceTokenizer(AbstractTokenizer):
+    def __init__(self, pretrained_model_name_or_path):
+        super().__init__(pretrained_model_name_or_path)
+        try:
+            import transformers
+        except ImportError:
+            raise EnvironmentError(
+                f"The transformers library must be installed to use huggingface_tokenizer_provider"
+            )
+
+        self._tokenizer = transformers.AutoTokenizer.from_pretrained(
+            pretrained_model_name_or_path=pretrained_model_name_or_path
+        )
+        self._vocab = self._tokenizer.get_vocab()
+        self._inv_vocab = {token_id: token for token, token_id in self._vocab.items()}
+
+    @property
+    def vocab_size(self):
+        return len(self._tokenizer)
+
+    @property
+    def vocab(self):
+        """Dictionary from vocab text token to id token."""
+        return self._vocab
+
+    @property
+    def inv_vocab(self):
+        """Dictionary from vocab id token to text token."""
+        return self._inv_vocab
+
+    @property
+    def decoder(self):
+        return self._inv_vocab
+
+    def tokenize(self, text, **kwargs):
+        return self._tokenizer(text, **kwargs).input_ids
+
+    def detokenize(self, token_ids, **kwargs):
+        return self._tokenizer.decode(token_ids, **kwargs)
+
+    @property
+    def eod(self):
+        return self._tokenizer.eos_token_id
 
 
 class HFTokenizer(AbstractTokenizer):
