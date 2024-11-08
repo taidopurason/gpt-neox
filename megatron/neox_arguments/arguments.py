@@ -540,6 +540,8 @@ class NeoXArgs(*BASE_CLASSES):
                 )
             )
 
+        args_list.extend(self.convert_key_value_to_command_line_arg("no_ssh_check", True))
+
         # get deepspeed runner args, and only pass them in to deepspeed launcher if they differ from defaults
         for key, default_value in NeoXArgsDeepspeedRunner().defaults():
             if key == "autotuning_run":
